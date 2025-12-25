@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nexuscrypto.vercel.app/sitemap.xml
