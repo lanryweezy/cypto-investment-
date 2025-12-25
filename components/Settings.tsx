@@ -141,11 +141,11 @@ const Settings: React.FC = () => {
             <Save size={18} /> SAVE CONFIG
          </button>
       </div>
+      
+      {showApiSettings && (
+        <ApiSettings onClose={() => setShowApiSettings(false)} />
+      )}
     </div>
-    
-    {showApiSettings && (
-      <ApiSettings onClose={() => setShowApiSettings(false)} />
-    )}
   );
 };
 

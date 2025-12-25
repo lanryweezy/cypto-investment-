@@ -5,6 +5,8 @@ import { MOCK_COINS, MOCK_NEWS } from '../../constants';
 // Mock the fetch API
 global.fetch = vi.fn();
 
+type Mock = vi.MockInstance<any, any[]>;
+
 describe('CryptoService', () => {
   beforeEach(() => {
     // Reset fetch mock
