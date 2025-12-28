@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AuthService } from '../../services/authService';
+import { authService } from '../../services/authService';
 
 // Mock localStorage
 const localStorageMock = {
@@ -14,8 +14,6 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 describe('AuthService', () => {
-  const authService = new AuthService(); // Create instance instead of importing singleton
-  
   beforeEach(() => {
     // Reset localStorage mock
     localStorageMock.getItem.mockClear();

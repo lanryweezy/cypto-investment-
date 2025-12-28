@@ -1,8 +1,6 @@
 import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-
+// Remove react plugin from vitest config as it's not needed for testing
 export default defineConfig({
-  plugins: [react()],
   test: {
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',

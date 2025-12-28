@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CacheService } from '../../services/cacheService';
+import { cacheService } from '../../services/cacheService';
 
 describe('CacheService', () => {
-  const cacheService = new CacheService(); // Create instance instead of importing singleton
-  
   beforeEach(() => {
     // Clear cache before each test
     cacheService.clear();

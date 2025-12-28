@@ -67,7 +67,7 @@ const PriceChart: React.FC = () => {
                 strokeWidth={3}
                 fillOpacity={1} 
                 fill="url(#colorBtc)" 
-                activeDot={{ r: 6, strokeWidth: 0, fill: '#fff', shadow: '0 0 10px #00F0FF' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#fff' }}
             />
             <Area 
                 type="monotone" 

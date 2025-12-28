@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, GoogleGenerativeAIError } from "@google/generative-ai";
 import { Coin, Signal } from "../types";
 import { configService } from "./configService";
 import { errorService } from "./errorService";
@@ -8,7 +8,7 @@ const apiKey = configService.getApiKey('geminiApiKey') || '';
 
 // Conditionally create the client. If no key is present, we will rely on fallbacks.
 // This prevents the "API key not found" error from crashing the app at startup.
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Helper to reliably parse errors and decide if we should fallback
 const handleGeminiError = (error: any): string | null => {
@@ -41,7 +41,7 @@ const handleGeminiError = (error: any): string | null => {
   if (msg.includes('429') || msg.includes('Quota') || (error?.status === 429)) {
     return "⚠️ AI Quota Exceeded. Please try again later.";
   }
-  
+
   return null; 
 };
 
@@ -62,11 +62,10 @@ export const analyzeMarket = async (coins: Coin[]): Promise<string> => {
       Keep it professional and data-driven.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "Analysis unavailable.";
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "Analysis unavailable.";
   } catch (error: any) {
     const errorMsg = handleGeminiError(error);
     if (errorMsg) return errorMsg;
@@ -92,11 +91,10 @@ export const generateFutureProjection = async (coin: Coin): Promise<string> => {
       Format with clear headings. Disclaimer: This is simulated analysis, not financial advice.
     `;
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "Projection unavailable.";
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "Projection unavailable.";
   } catch (error: any) {
     const errorMsg = handleGeminiError(error);
     if (errorMsg) return errorMsg;
@@ -124,26 +122,11 @@ export const generateTradingSignal = async (coin: Coin): Promise<Signal> => {
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            type: { type: Type.STRING, enum: ["BUY", "SELL"] },
-            entry: { type: Type.NUMBER },
-            target: { type: Type.NUMBER },
-            stopLoss: { type: Type.NUMBER },
-            reasoning: { type: Type.STRING },
-            confidence: { type: Type.NUMBER },
-          }
-        }
-      }
-    });
-
-    const data = JSON.parse(response.text || '{}');
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    const data = JSON.parse(text || '{}');
     
     return {
       id: Math.random().toString(36).substr(2, 9),
@@ -165,11 +148,10 @@ export const getEducationalContent = async (topic: string): Promise<string> => {
       Explain the crypto concept "${topic}" to a beginner trader. 
       Use simple analogies, bullet points, and keep it under 150 words.
     `;
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "Content unavailable.";
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "Content unavailable.";
   } catch (error: any) {
     const errorMsg = handleGeminiError(error);
     errorService.logWarning("Educational content failed, using simulated data", { topic, error: error.message, stack: error.stack });
