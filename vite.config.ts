@@ -33,10 +33,13 @@ export default defineConfig(({ mode }) => {
             'ai-vendor': ['@google/generative-ai']
           }
         }
+      },
+      commonjsOptions: {
+        include: [/node_modules/]
       }
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', 'lucide-react']
+      include: ['react', 'react-dom', 'lucide-react', 'recharts', '@google/generative-ai']
     }
   };
 });
