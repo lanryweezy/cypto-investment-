@@ -1,20 +1,31 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# NexusAI Crypto Trading Platform
 
-# Run and deploy your AI Studio app
+Advanced cryptocurrency trading platform with AI-powered analytics and real-time market data.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/18YQ-FD9jZuoMyh1x6M_YZeGVlGbMQXVk
+- Real-time cryptocurrency price tracking
+- AI-powered market analysis
+- Trading signals and alerts
+- Portfolio management
+- Advanced charting capabilities
+- News feed integration
+- Secure authentication system
+- Subscription management
+- API key management
 
-## Run Locally
+## Deployment
 
-**Prerequisites:**  Node.js
+Deployed on Vercel with optimized build configuration.
 
+## Technologies
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- Recharts
+- Google Generative AI
+- Vercel
+
+Updated: December 29, 2025
