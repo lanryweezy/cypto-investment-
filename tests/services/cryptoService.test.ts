@@ -8,7 +8,7 @@ global.fetch = vi.fn();
 describe('CryptoService', () => {
   beforeEach(() => {
     // Reset fetch mock
-    (global.fetch as vi.Mock).mockClear();
+    (global.fetch as any).mockClear();
   });
 
   it('should fetch top coins successfully', async () => {
@@ -25,7 +25,7 @@ describe('CryptoService', () => {
       }
     ];
 
-    (global.fetch as vi.Mock).mockResolvedValueOnce({
+    (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
     });
@@ -42,7 +42,7 @@ describe('CryptoService', () => {
   });
 
   it('should return mock coins when API fails', async () => {
-    (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network error'));
+    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
     const coins = await fetchTopCoins();
 
@@ -62,7 +62,7 @@ describe('CryptoService', () => {
       ]
     };
 
-    (global.fetch as vi.Mock).mockResolvedValueOnce({
+    (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
     });
@@ -78,7 +78,7 @@ describe('CryptoService', () => {
   });
 
   it('should return mock news when API fails', async () => {
-    (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network error'));
+    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
     const news = await fetchCryptoNews();
 
@@ -94,7 +94,7 @@ describe('CryptoService', () => {
       ]
     };
 
-    (global.fetch as vi.Mock).mockResolvedValueOnce({
+    (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
     });
@@ -111,7 +111,7 @@ describe('CryptoService', () => {
 
   it('should return mock history when API fails', async () => {
     const coinId = 'bitcoin';
-    (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network error'));
+    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
     const history = await fetchCoinHistory(coinId);
 
@@ -127,7 +127,7 @@ describe('CryptoService', () => {
       }
     };
 
-    (global.fetch as vi.Mock).mockResolvedValueOnce({
+    (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
     });
@@ -143,7 +143,7 @@ describe('CryptoService', () => {
 
   it('should return empty string when coin details API fails', async () => {
     const coinId = 'bitcoin';
-    (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network error'));
+    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
     const details = await fetchCoinDetails(coinId);
 
@@ -153,7 +153,7 @@ describe('CryptoService', () => {
   it('should handle API errors gracefully', async () => {
     const coinId = 'bitcoin';
     
-    (global.fetch as vi.Mock).mockResolvedValueOnce({
+    (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       statusText: 'Not Found',
     });

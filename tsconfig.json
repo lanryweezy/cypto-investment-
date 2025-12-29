@@ -23,7 +23,17 @@
         "./*"
       ]
     },
-    "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src",
+    "index.tsx",
+    "vite.config.ts",
+    "types.ts",
+    "constants.ts",
+    "components/**/*",
+    "services/**/*",
+    "tests/**/*",
+    "App.tsx"
+  ]
 }
