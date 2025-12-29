@@ -24,6 +24,15 @@ export default defineConfig(({ mode }) => {
           drop_console: true,
           drop_debugger: true
         }
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'ui-vendor': ['lucide-react', 'recharts'],
+            'ai-vendor': ['@google/generative-ai']
+          }
+        }
       }
     },
     optimizeDeps: {
