@@ -1,0 +1,11 @@
+{
+  "projectId": "cypto-investment-",
+  "orgId": "lanryweezy",
+  "settings": {
+    "framework": "vite",
+    "serverless": true,
+    "installCommand": "npm install --legacy-peer-deps",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist"
+  }
+}
