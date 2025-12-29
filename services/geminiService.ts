@@ -200,3 +200,41 @@ const getSimulatedSignal = (coin: Coin, errorMsg?: string | null): Signal => {
       confidence: Math.floor(Math.random() * 20) + 75 // Mock confidence 75-95
     };
 };
+
+// GeminiService class for direct access to AI features
+class GeminiService {
+  private genAI: GoogleGenerativeAI | null = null;
+  private model: any = null;
+
+  constructor() {
+    const apiKey = configService.getApiKey('geminiApiKey') || '';
+    
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    } else {
+      console.warn('Gemini API key not found. AI features will be disabled.');
+    }
+  }
+
+  async generateContent(prompt: string) {
+    if (!this.genAI || !this.model) {
+      throw new Error('Gemini API key not configured. Please set up your API key to use AI features.');
+    }
+
+    try {
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error generating content:', error);
+      throw error;
+    }
+  }
+
+  isConfigured(): boolean {
+    return this.genAI !== null && this.model !== null;
+  }
+}
+
+export const geminiService = new GeminiService();
