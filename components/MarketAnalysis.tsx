@@ -51,6 +51,7 @@ const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'rank' | 'gainers' | 'losers'>('rank');
   const [aiSignal, setAiSignal] = useState<Signal | null>(null);
+  const isAiAvailable = import.meta.env.VITE_AI_ENABLED === 'true';
   
   // Tabs for right panel
   const [activeTab, setActiveTab] = useState<'analysis' | 'trade'>('analysis');
@@ -149,17 +150,21 @@ const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
     setComparisonData([]);
 
     try {
-      const [aiResult, historyResult, descResult, signalResult] = await Promise.all([
-        generateFutureProjection(coin),
+      const promises = [
         fetchCoinHistory(coin.id),
         fetchCoinDetails(coin.id),
-        generateTradingSignal(coin)
-      ]);
+      ];
+      if (isAiAvailable) {
+        promises.push(generateFutureProjection(coin));
+        promises.push(generateTradingSignal(coin));
+      }
 
-      setProjection(aiResult);
+      const [historyResult, descResult, aiResult, signalResult] = await Promise.all(promises);
+
       setHistoryData(historyResult);
       setDescription(descResult);
-      setAiSignal(signalResult);
+      if (aiResult) setProjection(aiResult);
+      if (signalResult) setAiSignal(signalResult);
     } catch (e) {
       console.error("Analysis failed", e);
       setProjection("Error generating analysis. Please try again.");
@@ -249,9 +254,9 @@ const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
         <div className="flex justify-between items-end border-b border-white/5 pb-4">
             <div>
                 <h2 className="text-2xl font-bold text-white tracking-wide">Market Intelligence</h2>
-                <div className="text-xs text-crypto-accent font-mono mt-1 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-crypto-accent animate-pulse"></span>
-                    AI NEURAL NET: ACTIVE
+                <div className={`text-xs font-mono mt-1 flex items-center gap-2 ${isAiAvailable ? 'text-crypto-accent' : 'text-crypto-danger'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isAiAvailable ? 'bg-crypto-accent animate-pulse' : 'bg-crypto-danger'}`}></span>
+                    AI NEURAL NET: {isAiAvailable ? 'ACTIVE' : 'OFFLINE'}
                 </div>
             </div>
             <div className="text-xs text-gray-500 font-mono">v2.4.0-Stable</div>
@@ -371,13 +376,13 @@ const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
                                         <ArrowLeftRight size={12}/> TRADE
                                     </button>
                                  </div>
-                                 <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-crypto-secondary/10 border border-crypto-secondary/20 group relative cursor-help">
+                                 {isAiAvailable && <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-crypto-secondary/10 border border-crypto-secondary/20 group relative cursor-help">
                                     <Sparkles size={14} className="text-crypto-secondary" />
                                     <span className="text-xs font-bold text-crypto-secondary tracking-wide uppercase">AI Report</span>
                                     <div className="absolute top-full mt-2 right-0 w-48 bg-black border border-white/10 p-2 rounded text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                                         Generated via Gemini 2.5 Flash
                                     </div>
-                                 </div>
+                                 </div>}
                              </div>
                         </div>
 
@@ -577,7 +582,7 @@ const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
                                 </div>
 
                                 {/* AI Projection Box */}
-                                <div className="relative rounded-xl overflow-hidden border border-crypto-secondary/30 p-6 bg-gradient-to-br from-[#0a0514] to-black">
+                                {isAiAvailable && <div className="relative rounded-xl overflow-hidden border border-crypto-secondary/30 p-6 bg-gradient-to-br from-[#0a0514] to-black">
                                     <div className="absolute top-0 right-0 p-4 opacity-20">
                                         <Zap size={60} className="text-crypto-secondary" />
                                     </div>
@@ -589,7 +594,7 @@ const MarketAnalysis: React.FC<MarketAnalysisProps> = ({
                                     <div className="font-mono text-sm text-gray-300 leading-relaxed whitespace-pre-line relative z-10">
                                         {projection}
                                     </div>
-                                </div>
+                                </div>}
                                 
                                 <div className="grid grid-cols-2 gap-4 font-mono text-xs">
                                     <div className="p-4 bg-crypto-success/5 border border-crypto-success/20 rounded-xl relative group cursor-help">

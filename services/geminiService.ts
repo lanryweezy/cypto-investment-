@@ -1,175 +1,98 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { Coin, Signal } from "../types";
 
-// Safely access API key
-const apiKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) ? process.env.API_KEY : '';
-
-// Conditionally create the client. If no key is present, we will rely on fallbacks.
-// This prevents the "API key not found" error from crashing the app at startup.
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
-
-// Helper to reliably parse errors and decide if we should fallback
-const handleGeminiError = (error: any): string | null => {
-  console.warn("Gemini API Request Failed. Switching to simulation mode.", error);
-
-  let msg = '';
-  if (typeof error === 'string') {
-      msg = error;
-  } else if (error?.error?.message) {
-      msg = error.error.message;
-  } else if (error?.message) {
-      msg = error.message;
-  } else {
-      msg = JSON.stringify(error);
-  }
-
-  // Network, RPC, and 500 errors should trigger a fallback (return null)
-  if (
-      msg.includes('Rpc failed') || 
-      msg.includes('xhr error') || 
-      msg.includes('500') || 
-      msg.includes('Failed to fetch') || 
-      msg.includes('NetworkError') || 
-      msg.includes('Load failed')
-  ) {
-    return null; // Return null to signal that we should use a fallback
-  }
-
-  // Quota errors we might want to show to the user
-  if (msg.includes('429') || msg.includes('Quota') || (error?.status === 429)) {
-    return "⚠️ AI Quota Exceeded. Please try again later.";
-  }
-  
-  return null; 
-};
-
-export const analyzeMarket = async (coins: Coin[]): Promise<string> => {
-  if (!ai) return getSimulatedMarketAnalysis(coins);
+async function generateContent(prompt: string, json = false) {
 
   try {
-    const marketSnapshot = coins.map(c => `${c.name} ($${c.price}, ${c.change24h}%)`).join(', ');
-    const prompt = `
-      Act as a senior crypto market analyst. 
-      Here is a snapshot of the top cryptocurrencies right now: ${marketSnapshot}.
-      
-      Provide a concise 3-paragraph analysis:
-      1. Overall market sentiment (Bullish/Bearish/Neutral) and why.
-      2. Key movers and what it implies for the broader market.
-      3. A short-term outlook for the next 24-48 hours.
-      
-      Keep it professional and data-driven.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, json }),
     });
-    return response.text || "Analysis unavailable.";
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`);
+    }
+
+    return await response.json();
   } catch (error) {
-    const errorMsg = handleGeminiError(error);
-    if (errorMsg) return errorMsg;
-    return getSimulatedMarketAnalysis(coins);
+    console.error("Failed to generate content:", error);
+    return null;
   }
+}
+
+export const analyzeMarket = async (coins: Coin[]): Promise<string> => {
+  const marketSnapshot = coins.map(c => `${c.name} ($${c.price}, ${c.change24h}%)`).join(', ');
+  const prompt = `
+    Act as a senior crypto market analyst.
+    Here is a snapshot of the top cryptocurrencies right now: ${marketSnapshot}.
+
+    Provide a concise 3-paragraph analysis:
+    1. Overall market sentiment (Bullish/Bearish/Neutral) and why.
+    2. Key movers and what it implies for the broader market.
+    3. A short-term outlook for the next 24-48 hours.
+
+    Keep it professional and data-driven.
+  `;
+
+  const result = await generateContent(prompt);
+  return result?.text || getSimulatedMarketAnalysis(coins);
 };
 
 export const generateFutureProjection = async (coin: Coin): Promise<string> => {
-  if (!ai) return getSimulatedProjection(coin);
-
-  try {
-    const prompt = `
-      Perform a speculative future growth projection for ${coin.name} (${coin.symbol}).
-      Current Price: $${coin.price}
-      Market Cap: $${coin.marketCap}
-      
-      Provide:
-      1. A realistic price target for end of 2025 based on current adoption trends.
-      2. A "Blue Sky" (Bull Case) scenario.
-      3. A "Bear Case" (Risk) scenario.
-      
-      Format with clear headings. Disclaimer: This is simulated analysis, not financial advice.
-    `;
+  const prompt = `
+    Perform a speculative future growth projection for ${coin.name} (${coin.symbol}).
+    Current Price: $${coin.price}
+    Market Cap: $${coin.marketCap}
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "Projection unavailable.";
-  } catch (error) {
-    const errorMsg = handleGeminiError(error);
-    if (errorMsg) return errorMsg;
-    return getSimulatedProjection(coin);
-  }
+    Provide:
+    1. A realistic price target for end of 2025 based on current adoption trends.
+    2. A "Blue Sky" (Bull Case) scenario.
+    3. A "Bear Case" (Risk) scenario.
+
+    Format with clear headings. Disclaimer: This is simulated analysis, not financial advice.
+  `;
+
+  const result = await generateContent(prompt);
+  return result?.text || getSimulatedProjection(coin);
 };
 
 export const generateTradingSignal = async (coin: Coin): Promise<Signal> => {
-  if (!ai) return getSimulatedSignal(coin);
-
-  try {
-    const prompt = `
-      Generate a simulated trading signal for ${coin.name} (${coin.symbol}) based on standard technical analysis patterns (RSI, MACD, Moving Averages).
-      Current Price: ${coin.price}.
-      
-      Return the response in JSON format conforming to this schema:
-      {
-        "type": "BUY" or "SELL",
-        "entry": number,
-        "target": number,
-        "stopLoss": number,
-        "reasoning": "short string explaining the setup",
-        "confidence": number (integer between 0 and 100 representing confidence percentage)
-      }
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            type: { type: Type.STRING, enum: ["BUY", "SELL"] },
-            entry: { type: Type.NUMBER },
-            target: { type: Type.NUMBER },
-            stopLoss: { type: Type.NUMBER },
-            reasoning: { type: Type.STRING },
-            confidence: { type: Type.NUMBER },
-          }
-        }
-      }
-    });
-
-    const data = JSON.parse(response.text || '{}');
+  const prompt = `
+    Generate a simulated trading signal for ${coin.name} (${coin.symbol}) based on standard technical analysis patterns (RSI, MACD, Moving Averages).
+    Current Price: ${coin.price}.
     
-    return {
-      id: Math.random().toString(36).substr(2, 9),
-      pair: `${coin.symbol}/USD`,
-      timestamp: new Date().toISOString(),
-      ...data
-    };
-  } catch (error: any) {
-    const errorMsg = handleGeminiError(error);
-    return getSimulatedSignal(coin, errorMsg);
+    Return the response in JSON format conforming to this schema:
+    {
+      "type": "BUY" or "SELL",
+      "entry": number,
+      "target": number,
+      "stopLoss": number,
+      "reasoning": "short string explaining the setup",
+      "confidence": number (integer between 0 and 100 representing confidence percentage)
+    }
+  `;
+
+  const data = await generateContent(prompt, true);
+
+  if (!data) {
+    return getSimulatedSignal(coin);
   }
+
+  return {
+    id: Math.random().toString(36).substr(2, 9),
+    pair: `${coin.symbol}/USD`,
+    timestamp: new Date().toISOString(),
+    ...data
+  };
 };
 
 export const getEducationalContent = async (topic: string): Promise<string> => {
-   if (!ai) return "Simulated Content: Blockchain technology enables decentralized trust...";
-
-   try {
-    const prompt = `
-      Explain the crypto concept "${topic}" to a beginner trader. 
-      Use simple analogies, bullet points, and keep it under 150 words.
-    `;
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "Content unavailable.";
-  } catch (error) {
-    const errorMsg = handleGeminiError(error);
-    return errorMsg || `### ${topic}\n\nThis is simulated educational content. **${topic}** is a fundamental concept in cryptocurrency that refers to... (Simulated due to network status)`;
-  }
+  const prompt = `
+    Explain the crypto concept "${topic}" to a beginner trader.
+    Use simple analogies, bullet points, and keep it under 150 words.
+  `;
+  const result = await generateContent(prompt);
+  return result?.text || "Simulated Content: Blockchain technology enables decentralized trust...";
 }
 
 // --- SIMULATION FALLBACKS ---

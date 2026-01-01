@@ -14,6 +14,7 @@ const Signals: React.FC<SignalsProps> = ({ coins, user, onExecuteTrade }) => {
   const [loadingSignal, setLoadingSignal] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const isAiAvailable = import.meta.env.VITE_AI_ENABLED === 'true';
 
   const filteredCoins = coins.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -21,6 +22,7 @@ const Signals: React.FC<SignalsProps> = ({ coins, user, onExecuteTrade }) => {
   );
 
   const handleGetSignal = async (coin: Coin) => {
+    if (!isAiAvailable) return;
     setLoadingSignal(true);
     setSignal(null);
     const result = await generateTradingSignal(coin);
@@ -78,8 +80,8 @@ const Signals: React.FC<SignalsProps> = ({ coins, user, onExecuteTrade }) => {
                 </h2>
                 <p className="text-gray-400 text-xs font-mono mt-1 tracking-widest uppercase">Predictive Algorithmic Trading</p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1 bg-crypto-secondary/10 rounded-full border border-crypto-secondary/20 text-[10px] font-mono text-crypto-secondary animate-pulse">
-                <Radio size={12} /> LIVE SCANNING
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono ${isAiAvailable ? 'bg-crypto-secondary/10 border-crypto-secondary/20 text-crypto-secondary animate-pulse' : 'bg-crypto-danger/10 border-crypto-danger/20 text-crypto-danger'}`}>
+                <Radio size={12} /> {isAiAvailable ? 'LIVE SCANNING' : 'OFFLINE'}
             </div>
         </div>
 
@@ -106,7 +108,8 @@ const Signals: React.FC<SignalsProps> = ({ coins, user, onExecuteTrade }) => {
                         <button
                             key={coin.id}
                             onClick={() => handleGetSignal(coin)}
-                            className="w-full flex justify-between items-center p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group"
+                            disabled={!isAiAvailable}
+                            className="w-full flex justify-between items-center p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center font-bold text-[10px] text-gray-400 group-hover:text-white transition-colors">
@@ -237,8 +240,12 @@ const Signals: React.FC<SignalsProps> = ({ coins, user, onExecuteTrade }) => {
                         <div className="p-6 bg-white/5 rounded-full mb-6">
                             <Zap size={48} className="text-gray-700" />
                         </div>
-                        <h3 className="text-lg font-bold text-gray-500 mb-2">AWAITING TARGET SELECTION</h3>
-                        <p className="font-mono text-xs tracking-widest text-gray-600">SELECT AN ASSET TO INITIATE SIGNAL PROTOCOL</p>
+                        <h3 className="text-lg font-bold text-gray-500 mb-2">
+                            {isAiAvailable ? 'AWAITING TARGET SELECTION' : 'AI PROCESSOR OFFLINE'}
+                        </h3>
+                        <p className="font-mono text-xs tracking-widest text-gray-600">
+                            {isAiAvailable ? 'SELECT AN ASSET TO INITIATE SIGNAL PROTOCOL' : 'API KEY NOT CONFIGURED'}
+                        </p>
                     </div>
                 )}
             </div>
