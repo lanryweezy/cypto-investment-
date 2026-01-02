@@ -13,9 +13,10 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ coins, news, onNavigateToMarket }) => {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const isAiAvailable = import.meta.env.VITE_AI_ENABLED === 'true';
 
   const handleGenerateAnalysis = async () => {
-    if (coins.length === 0) return;
+    if (coins.length === 0 || !isAiAvailable) return;
     setLoading(true);
     const result = await analyzeMarket(coins.slice(0, 5));
     setAiSummary(result);
@@ -109,7 +110,6 @@ const Dashboard: React.FC<DashboardProps> = ({ coins, news, onNavigateToMarket }
         {/* AI Insight Sidebar */}
         <div className="lg:col-span-1">
           <div className="glass-panel p-1 rounded-2xl h-full flex flex-col relative overflow-hidden">
-            {/* Decorative background elements */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-crypto-secondary via-crypto-accent to-crypto-secondary animate-pulse"></div>
             <div className="absolute bottom-0 right-0 w-64 h-64 bg-crypto-secondary/10 blur-[100px] rounded-full pointer-events-none"></div>
 
@@ -121,13 +121,14 @@ const Dashboard: React.FC<DashboardProps> = ({ coins, news, onNavigateToMarket }
                         </div>
                         <div>
                             <h3 className="font-bold text-white">Gemini AI Core</h3>
-                            <p className="text-xs text-crypto-accent font-mono">STATUS: ONLINE</p>
+                            <p className={`text-xs font-mono ${isAiAvailable ? 'text-crypto-accent' : 'text-crypto-danger'}`}>
+                                STATUS: {isAiAvailable ? 'ONLINE' : 'OFFLINE'}
+                            </p>
                         </div>
                     </div>
                 </div>
                 
                 <div className="flex-1 bg-black/40 rounded-xl border border-white/5 p-4 mb-6 relative overflow-hidden">
-                  {/* Scanline effect */}
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent h-4 w-full animate-[scan_2s_linear_infinite] pointer-events-none opacity-20"></div>
                   
                   {loading ? (
@@ -150,11 +151,13 @@ const Dashboard: React.FC<DashboardProps> = ({ coins, news, onNavigateToMarket }
                   ) : (
                       <div className="flex flex-col items-center justify-center py-6 text-center h-full">
                           <Sparkles size={32} className="text-gray-700 mb-4" />
-                          <p className="text-xs text-gray-500 font-mono mb-6">AWAITING INPUT COMMAND</p>
+                          <p className="text-xs text-gray-500 font-mono mb-6">
+                            {isAiAvailable ? 'AWAITING INPUT COMMAND' : 'AI CORE OFFLINE'}
+                          </p>
                           <button 
                               onClick={handleGenerateAnalysis}
-                              disabled={coins.length === 0}
-                              className="w-full py-3 bg-crypto-secondary/20 hover:bg-crypto-secondary/30 border border-crypto-secondary/50 text-crypto-secondary rounded-lg transition-all text-sm font-bold tracking-wider hover:shadow-[0_0_15px_rgba(112,0,255,0.3)]"
+                              disabled={!isAiAvailable || coins.length === 0}
+                              className="w-full py-3 bg-crypto-secondary/20 hover:bg-crypto-secondary/30 border border-crypto-secondary/50 text-crypto-secondary rounded-lg transition-all text-sm font-bold tracking-wider hover:shadow-[0_0_15px_rgba(112,0,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                               INITIALIZE ANALYSIS
                           </button>
