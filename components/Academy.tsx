@@ -10,6 +10,7 @@ interface AcademyProps {
 const Academy: React.FC<AcademyProps> = ({ coins }) => {
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [lessonContent, setLessonContent] = useState<Record<string, string>>({});
+  const isAiAvailable = import.meta.env.VITE_AI_ENABLED === 'true';
 
   const lessons = [
     { id: 'intro', title: 'BLOCKCHAIN FUNDAMENTALS' },
@@ -23,6 +24,7 @@ const Academy: React.FC<AcademyProps> = ({ coins }) => {
   ];
 
   const toggleLesson = async (id: string) => {
+    if (!isAiAvailable) return;
     if (expandedLesson === id) {
         setExpandedLesson(null);
         return;
@@ -44,8 +46,8 @@ const Academy: React.FC<AcademyProps> = ({ coins }) => {
                 </h2>
                 <p className="text-gray-400 text-xs font-mono mt-1 tracking-widest uppercase">Encrypted Knowledge Database</p>
             </div>
-            <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[10px] font-mono text-gray-400">
-                V 2.1.0 // DATABASE ONLINE
+            <div className={`px-3 py-1 rounded-full border text-[10px] font-mono ${isAiAvailable ? 'bg-white/5 border-white/10 text-gray-400' : 'bg-crypto-danger/10 border-crypto-danger/20 text-crypto-danger'}`}>
+                V 2.1.0 // DATABASE {isAiAvailable ? 'ONLINE' : 'OFFLINE'}
             </div>
         </div>
 
@@ -64,7 +66,8 @@ const Academy: React.FC<AcademyProps> = ({ coins }) => {
                                 <div key={lesson.id} className="group rounded-xl overflow-hidden border border-white/5 hover:border-crypto-accent/30 bg-black/20 transition-all">
                                     <button 
                                         onClick={() => toggleLesson(lesson.id)}
-                                        className={`w-full flex justify-between items-center p-5 text-left transition-colors ${expandedLesson === lesson.id ? 'bg-white/5' : 'hover:bg-white/5'}`}
+                                        disabled={!isAiAvailable}
+                                        className={`w-full flex justify-between items-center p-5 text-left transition-colors ${expandedLesson === lesson.id ? 'bg-white/5' : 'hover:bg-white/5'} disabled:opacity-50 disabled:cursor-not-allowed`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${expandedLesson === lesson.id ? 'bg-crypto-accent text-black' : 'bg-gray-800 text-gray-500 group-hover:text-gray-300'}`}>
