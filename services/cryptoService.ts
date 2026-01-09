@@ -42,11 +42,20 @@ export const fetchTopCoins = async (): Promise<Coin[]> => {
     // Try to get from cache first
     const cached = cacheService.get<Coin[]>('top-coins');
     if (cached) {
+      console.log('📊 Using cached coin data');
       return cached;
     }
     
     const headers = getHeaders();
-    const response = await fetch(`${COINGECKO_API}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15&page=1&sparkline=false`, { headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
+    
+    const response = await fetch(
+      `${COINGECKO_API}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15&page=1&sparkline=false`,
+      { headers, signal: controller.signal }
+    );
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
         throw new Error(`CoinGecko API Error: ${response.statusText}`);
@@ -67,10 +76,15 @@ export const fetchTopCoins = async (): Promise<Coin[]> => {
     
     // Cache for 5 minutes
     cacheService.set('top-coins', coins, 5 * 60 * 1000);
+    console.log('✅ Fetched live coin data from CoinGecko');
     
     return coins;
   } catch (err: any) {
-    errorService.logWarning("Failed to fetch live coins, using mock data", { error: err.message, stack: err.stack });
+    const errorMsg = err.name === 'AbortError' 
+      ? 'API request timed out' 
+      : err.message;
+    console.warn(`⚠️ Coin fetch failed (${errorMsg}) - using mock data`);
+    errorService.logWarning("Failed to fetch live coins, using mock data", { error: errorMsg });
     return MOCK_COINS;
   }
 };
@@ -80,11 +94,17 @@ export const fetchCryptoNews = async (): Promise<NewsItem[]> => {
     // Try to get from cache first
     const cached = cacheService.get<NewsItem[]>('crypto-news');
     if (cached) {
+      console.log('📰 Using cached news data');
       return cached;
     }
     
     const headers = getHeaders();
-    const response = await fetch(NEWS_API, { headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
+    
+    const response = await fetch(NEWS_API, { headers, signal: controller.signal });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
         throw new Error(`News API Error: ${response.statusText}`);
@@ -98,15 +118,20 @@ export const fetchCryptoNews = async (): Promise<NewsItem[]> => {
       summary: item.body.substring(0, 150) + '...',
       source: item.source_info.name,
       time: new Date(item.published_on * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      sentiment: 'neutral' // API doesn't provide pre-calculated sentiment for free, defaulting to neutral
+      sentiment: 'neutral'
     }));
     
     // Cache for 10 minutes
     cacheService.set('crypto-news', news, 10 * 60 * 1000);
+    console.log('✅ Fetched live news from CryptoCompare');
     
     return news;
   } catch (err: any) {
-    errorService.logWarning("Failed to fetch live news, using mock data", { error: err.message, stack: err.stack });
+    const errorMsg = err.name === 'AbortError' 
+      ? 'API request timed out' 
+      : err.message;
+    console.warn(`⚠️ News fetch failed (${errorMsg}) - using mock data`);
+    errorService.logWarning("Failed to fetch live news, using mock data", { error: errorMsg });
     return MOCK_NEWS;
   }
 };

@@ -89,17 +89,18 @@ class ErrorService {
   }
 
   private outputToConsole(log: ErrorLog): void {
-    const output = `[${log.level.toUpperCase()}] ${log.message}`;
+    const timestamp = new Date(log.timestamp).toLocaleTimeString();
+    const output = `[${timestamp}] [${log.level.toUpperCase()}] ${log.message}`;
     
     switch (log.level) {
       case 'error':
-        console.error(output, log.context, log.stack ? { stack: log.stack } : {});
+        console.error(`❌ ${output}`, log.context || '', log.stack ? `\n${log.stack}` : '');
         break;
       case 'warn':
-        console.warn(output, log.context);
+        console.warn(`⚠️ ${output}`, log.context || '');
         break;
       case 'info':
-        console.info(output, log.context);
+        console.info(`ℹ️ ${output}`, log.context || '');
         break;
     }
   }
