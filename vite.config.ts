@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       'process.env.VITE_COINGECKO_API_KEY': JSON.stringify(env.VITE_COINGECKO_API_KEY || ''),
       'process.env.VITE_CRYPTOCOMPARE_API_KEY': JSON.stringify(env.VITE_CRYPTOCOMPARE_API_KEY || '')
     },
-    base: './',
+    base: '/',
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
