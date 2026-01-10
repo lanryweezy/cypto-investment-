@@ -1,27 +1,27 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "outputDirectory": "dist",
   "routes": [
     {
-      "src": "/assets/(.*)",
+      "src": "/assets/.*\\.(js|css|wasm)$",
       "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      },
-      "continue": true
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/assets/.*\\.css$",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Type": "text/css"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "status": 200
     }
-  ],
-  "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build"
+  ]
 }
