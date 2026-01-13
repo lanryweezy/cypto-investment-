@@ -70,7 +70,7 @@ export interface UserProfile {
   isLoggedIn: boolean;
 }
 
-export type View = 'dashboard' | 'market' | 'news' | 'academy' | 'signals' | 'profile' | 'settings';
+export type View = 'dashboard' | 'market' | 'news' | 'academy' | 'signals' | 'profile' | 'settings' | 'payment';
 
 export interface MarketAnalysisResponse {
   sentiment: string;

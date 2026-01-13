@@ -1,253 +1,265 @@
-import { UserProfile } from '../types';
+/**
+ * Payment Service
+ * Handles Stripe payment processing and balance management
+ */
 
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number; // in USD
-  interval: 'month' | 'year';
-  features: string[];
-  maxApiCalls?: number;
-  maxUsers?: number;
-}
-
-export interface Subscription {
-  id: string;
-  userId: string;
-  planId: string;
-  status: 'active' | 'cancelled' | 'expired' | 'trial';
-  startDate: string;
-  endDate: string;
-  trialEndDate?: string;
-  autoRenew: boolean;
-  paymentMethod?: string;
-}
-
-export interface PaymentIntent {
-  id: string;
-  userId: string;
-  amount: number; // in cents
+interface PaymentIntent {
+  clientSecret: string;
+  paymentIntentId: string;
+  amount: number;
   currency: string;
-  status: 'pending' | 'succeeded' | 'failed' | 'canceled';
-  planId: string;
-  createdAt: string;
+}
+
+interface PaymentConfirmation {
+  success: boolean;
+  paymentId: string;
+  amount: number;
+  newBalance: number;
+  timestamp: string;
+}
+
+interface Payment {
+  id: string;
+  userId: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  timestamp: string;
+}
+
+interface PaymentHistory {
+  payments: Payment[];
+  total: number;
+  totalAmount: number;
+}
+
+interface UserBalance {
+  userId: string;
+  balance: number;
+  currency: string;
 }
 
 class PaymentService {
-  private static instance: PaymentService;
-  private plans: SubscriptionPlan[] = [
-    {
-      id: 'free',
-      name: 'Starter',
-      price: 0,
-      interval: 'month',
-      features: [
-        'Basic market data',
-        '5 API calls per day',
-        'Standard indicators',
-        'Limited news feed'
-      ]
-    },
-    {
-      id: 'pro',
-      name: 'Pro Trader',
-      price: 29.99,
-      interval: 'month',
-      features: [
-        'Real-time market data',
-        'Unlimited API calls',
-        'Advanced indicators',
-        'AI-powered signals',
-        'Premium news feed',
-        'Portfolio tracking'
-      ]
-    },
-    {
-      id: 'premium',
-      name: 'Institutional',
-      price: 99.99,
-      interval: 'month',
-      features: [
-        'All Pro features',
-        'Custom API endpoints',
-        'Priority support',
-        'Dedicated account manager',
-        'Advanced analytics',
-        'Custom integrations'
-      ]
-    }
-  ];
+  private apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  private stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
 
-  private subscriptions: Subscription[] = [];
-  private paymentIntents: PaymentIntent[] = [];
+  /**
+   * Create payment intent
+   */
+  async createPaymentIntent(
+    amount: number,
+    currency: string = 'usd',
+    description?: string
+  ): Promise<PaymentIntent> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/payments/create-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAccessToken()}`
+        },
+        body: JSON.stringify({ amount, currency, description })
+      });
 
-  private constructor() {
-    // Initialize with some mock data
-    this.initializeMockData();
-  }
-
-  public static getInstance(): PaymentService {
-    if (!PaymentService.instance) {
-      PaymentService.instance = new PaymentService();
-    }
-    return PaymentService.instance;
-  }
-
-  private initializeMockData(): void {
-    // Create some mock subscriptions
-    this.subscriptions = [
-      {
-        id: 'sub_1',
-        userId: 'demo_user',
-        planId: 'pro',
-        status: 'active',
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-        autoRenew: true
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create payment intent');
       }
-    ];
-  }
 
-  public getPlans(): SubscriptionPlan[] {
-    return [...this.plans];
-  }
-
-  public getPlanById(planId: string): SubscriptionPlan | undefined {
-    return this.plans.find(plan => plan.id === planId);
-  }
-
-  public async getUserSubscription(userId: string): Promise<Subscription | null> {
-    const subscription = this.subscriptions.find(sub => sub.userId === userId);
-    return subscription || null;
-  }
-
-  public async createSubscription(userId: string, planId: string, autoRenew: boolean = true): Promise<Subscription> {
-    const plan = this.getPlanById(planId);
-    if (!plan) {
-      throw new Error(`Plan with id ${planId} not found`);
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Failed to create payment intent:', error);
+      throw error;
     }
+  }
 
-    // Check if user already has an active subscription
-    const existingSub = this.subscriptions.find(sub => sub.userId === userId && sub.status === 'active');
-    if (existingSub) {
-      // Cancel the existing subscription
-      existingSub.status = 'cancelled';
+  /**
+   * Confirm payment
+   */
+  async confirmPayment(
+    paymentIntentId: string,
+    amount: number
+  ): Promise<PaymentConfirmation> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/payments/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAccessToken()}`
+        },
+        body: JSON.stringify({ paymentIntentId, amount })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to confirm payment');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Failed to confirm payment:', error);
+      throw error;
     }
+  }
 
-    const startDate = new Date();
-    const endDate = new Date();
-    
-    if (plan.interval === 'month') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else {
-      endDate.setFullYear(endDate.getFullYear() + 1);
+  /**
+   * Get payment history
+   */
+  async getPaymentHistory(): Promise<PaymentHistory> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/payments/history`, {
+        headers: {
+          'Authorization': `Bearer ${this.getAccessToken()}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch payment history');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Failed to fetch payment history:', error);
+      throw error;
     }
+  }
 
-    const newSubscription: Subscription = {
-      id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId,
-      planId,
-      status: 'active',
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      autoRenew
+  /**
+   * Get user balance
+   */
+  async getBalance(): Promise<UserBalance> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/payments/balance`, {
+        headers: {
+          'Authorization': `Bearer ${this.getAccessToken()}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch balance');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Failed to fetch balance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update balance
+   */
+  async updateBalance(
+    amount: number,
+    type: 'deposit' | 'withdraw' = 'deposit'
+  ): Promise<any> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/payments/update-balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAccessToken()}`
+        },
+        body: JSON.stringify({ amount, type })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update balance');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ Failed to update balance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get payment methods
+   */
+  async getPaymentMethods(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.apiUrl}/api/payments/methods`, {
+        headers: {
+          'Authorization': `Bearer ${this.getAccessToken()}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch payment methods');
+      }
+
+      const data = await response.json();
+      return data.methods || [];
+    } catch (error) {
+      console.error('❌ Failed to fetch payment methods:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Stripe public key
+   */
+  getStripePublicKey(): string {
+    return this.stripePublicKey;
+  }
+
+  /**
+   * Check if Stripe is configured
+   */
+  isStripeConfigured(): boolean {
+    return !!this.stripePublicKey;
+  }
+
+  /**
+   * Get access token from localStorage
+   */
+  private getAccessToken(): string {
+    return localStorage.getItem('access_token') || '';
+  }
+
+  /**
+   * Format currency
+   */
+  formatCurrency(amount: number, currency: string = 'USD'): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase()
+    }).format(amount);
+  }
+
+  /**
+   * Validate amount
+   */
+  validateAmount(amount: number, minAmount: number = 1, maxAmount: number = 100000): boolean {
+    return amount >= minAmount && amount <= maxAmount;
+  }
+
+  /**
+   * Get payment status
+   */
+  getPaymentStatus(status: string): {
+    label: string;
+    color: string;
+    icon: string;
+  } {
+    const statuses: {
+      [key: string]: { label: string; color: string; icon: string };
+    } = {
+      completed: { label: 'Completed', color: 'text-green-500', icon: '✓' },
+      pending: { label: 'Pending', color: 'text-yellow-500', icon: '⏳' },
+      failed: { label: 'Failed', color: 'text-red-500', icon: '✗' },
+      cancelled: { label: 'Cancelled', color: 'text-gray-500', icon: '✗' }
     };
 
-    this.subscriptions.push(newSubscription);
-    return newSubscription;
-  }
-
-  public async cancelSubscription(subscriptionId: string): Promise<void> {
-    const subscription = this.subscriptions.find(sub => sub.id === subscriptionId);
-    if (!subscription) {
-      throw new Error(`Subscription with id ${subscriptionId} not found`);
-    }
-
-    subscription.status = 'cancelled';
-  }
-
-  public async updateSubscription(subscriptionId: string, autoRenew: boolean): Promise<Subscription> {
-    const subscription = this.subscriptions.find(sub => sub.id === subscriptionId);
-    if (!subscription) {
-      throw new Error(`Subscription with id ${subscriptionId} not found`);
-    }
-
-    subscription.autoRenew = autoRenew;
-    return subscription;
-  }
-
-  public async createPaymentIntent(userId: string, planId: string): Promise<PaymentIntent> {
-    const plan = this.getPlanById(planId);
-    if (!plan) {
-      throw new Error(`Plan with id ${planId} not found`);
-    }
-
-    const amount = Math.round(plan.price * 100); // Convert to cents
-
-    const paymentIntent: PaymentIntent = {
-      id: `pi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId,
-      amount,
-      currency: 'usd',
-      status: 'pending',
-      planId,
-      createdAt: new Date().toISOString()
-    };
-
-    this.paymentIntents.push(paymentIntent);
-    return paymentIntent;
-  }
-
-  public async confirmPayment(paymentIntentId: string): Promise<PaymentIntent> {
-    const paymentIntent = this.paymentIntents.find(pi => pi.id === paymentIntentId);
-    if (!paymentIntent) {
-      throw new Error(`Payment intent with id ${paymentIntentId} not found`);
-    }
-
-    paymentIntent.status = 'succeeded';
-    return paymentIntent;
-  }
-
-  public async processPayment(userId: string, planId: string): Promise<{ subscription: Subscription, paymentIntent: PaymentIntent }> {
-    const paymentIntent = await this.createPaymentIntent(userId, planId);
-    const confirmedPayment = await this.confirmPayment(paymentIntent.id);
-    
-    // Create subscription after successful payment
-    const subscription = await this.createSubscription(userId, planId);
-    
-    return { subscription, paymentIntent: confirmedPayment };
-  }
-
-  public async isUserSubscribed(userId: string): Promise<boolean> {
-    const subscription = await this.getUserSubscription(userId);
-    if (!subscription) return false;
-    
-    // Check if subscription is still valid
-    const now = new Date();
-    const endDate = new Date(subscription.endDate);
-    
-    return subscription.status === 'active' && endDate > now;
-  }
-
-  public async getActivePlanForUser(userId: string): Promise<SubscriptionPlan | null> {
-    const subscription = await this.getUserSubscription(userId);
-    if (!subscription) return null;
-    
-    const plan = this.getPlanById(subscription.planId);
-    return plan || null;
-  }
-
-  public async getRemainingTrialDays(userId: string): Promise<number | null> {
-    const subscription = await this.getUserSubscription(userId);
-    if (!subscription || !subscription.trialEndDate) return null;
-    
-    const trialEnd = new Date(subscription.trialEndDate);
-    const now = new Date();
-    
-    if (trialEnd < now) return 0; // Trial has ended
-    
-    const diffTime = trialEnd.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
+    return statuses[status] || statuses.pending;
   }
 }
 
-export const paymentService = PaymentService.getInstance();
+export const paymentService = new PaymentService();
+export type { PaymentIntent, PaymentConfirmation, Payment, PaymentHistory, UserBalance };

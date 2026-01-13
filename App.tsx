@@ -8,6 +8,7 @@ import Signals from './components/Signals';
 import Profile from './components/Profile';
 import NewsFeed from './components/NewsFeed';
 import Settings from './components/Settings';
+import Payment from './components/Payment';
 import Login from './components/Login';
 import { View, Coin, NewsItem, UserProfile, Transaction, Position, PriceAlert } from './types';
 import { fetchTopCoins, fetchCryptoNews } from './services/cryptoService';
@@ -15,6 +16,7 @@ import { authService } from './services/authService';
 import { databaseService } from './services/databaseService';
 import { analyticsService } from './services/analyticsService';
 import { healthService } from './services/healthService';
+import { realtimeDataService } from './services/realtimeDataService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -65,24 +67,35 @@ const App: React.FC = () => {
       }, 5000);
 
       try {
-        const [fetchedCoins, fetchedNews] = await Promise.all([
-          fetchTopCoins().catch(err => {
-            console.error("❌ Coins fetch failed:", err);
-            return [];
-          }),
-          fetchCryptoNews().catch(err => {
-            console.error("❌ News fetch failed:", err);
-            return [];
-          })
-        ]);
+        // Start real-time data service
+        await realtimeDataService.start(['BTC', 'ETH', 'SOL', 'BNB', 'XRP']);
+        
+        // Get initial coins from real-time service
+        const realCoins = realtimeDataService.getAllCoins().map(coin => ({
+          id: coin.id,
+          name: coin.name,
+          symbol: coin.symbol,
+          price: coin.price,
+          change24h: coin.change24h,
+          marketCap: coin.marketCap || 0,
+          volume24h: coin.volume24h,
+          description: `Real-time data from Binance`,
+          image: `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.id}.png`
+        }));
+
+        // Fetch news
+        const fetchedNews = await fetchCryptoNews().catch(err => {
+          console.error("❌ News fetch failed:", err);
+          return [];
+        });
         
         if (mounted) {
-          setCoins(fetchedCoins.length > 0 ? fetchedCoins : []);
+          setCoins(realCoins.length > 0 ? realCoins : []);
           setNews(fetchedNews.length > 0 ? fetchedNews : []);
           setIsLoadingData(false);
           
           // Log what data we got
-          if (fetchedCoins.length > 0) console.log(`✅ Loaded ${fetchedCoins.length} coins`);
+          if (realCoins.length > 0) console.log(`✅ Loaded ${realCoins.length} coins from Binance`);
           if (fetchedNews.length > 0) console.log(`✅ Loaded ${fetchedNews.length} news items`);
         }
       } catch (e) {
@@ -97,11 +110,33 @@ const App: React.FC = () => {
     };
 
     loadData();
-    const interval = setInterval(loadData, 60000); // Refresh data every minute
+
+    // Subscribe to real-time updates
+    const unsubscribe = realtimeDataService.subscribe({
+      onUpdate: (coins) => {
+        if (mounted) {
+          setCoins(coins.map(coin => ({
+            id: coin.id,
+            name: coin.name,
+            symbol: coin.symbol,
+            price: coin.price,
+            change24h: coin.change24h,
+            marketCap: coin.marketCap || 0,
+            volume24h: coin.volume24h,
+            description: `Real-time data from Binance`,
+            image: `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${coin.id}.png`
+          })));
+        }
+      },
+      onError: (error) => {
+        console.error('❌ Real-time data error:', error);
+      }
+    });
 
     return () => { 
-        mounted = false; 
-        clearInterval(interval);
+        mounted = false;
+        unsubscribe();
+        realtimeDataService.stop();
     };
   }, []);
 
@@ -326,6 +361,12 @@ const App: React.FC = () => {
         return <Profile user={user} setUser={setUser} currentPrices={coins} onToggleWatchlist={toggleWatchlist} />;
       case 'settings':
         return <Settings />;
+      case 'payment':
+        return <Payment onPaymentSuccess={(amount) => {
+          if (user) {
+            setUser({ ...user, balance: user.balance + amount });
+          }
+        }} />;
       default:
         return <Dashboard coins={coins} news={news} onNavigateToMarket={handleNavigateToMarket} />;
     }
